@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { pdf } from '@react-pdf/renderer'
-import React from 'react'
 import InvoicePDF from '@/components/invoice-pdf'
 
 export async function GET(
@@ -36,7 +35,7 @@ export async function GET(
       )
     }
 
-    const pdfBlob = await pdf(React.createElement(InvoicePDF, { invoice })).toBlob()
+    const pdfBlob = await pdf(<InvoicePDF invoice={invoice} />).toBlob()
 
     return new NextResponse(pdfBlob, {
       headers: {
