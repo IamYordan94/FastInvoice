@@ -1,0 +1,118 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  name              String
+  email             String    @unique
+  passwordHash      String    @map("password_hash")
+  companyName       String?   @map("company_name")
+  companyAddress    String?   @map("company_address")
+  vatNumber         String?   @map("vat_number")
+  ibanOrBankDetails String?   @map("iban_or_bank_details")
+  defaultCurrency   String    @default("EUR") @map("default_currency")
+  defaultLanguage   String    @default("en") @map("default_language")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  clients   Client[]
+  items     Item[]
+  invoices  Invoice[]
+
+  @@map("users")
+}
+
+model Client {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  clientName            String    @map("client_name")
+  contactName           String?   @map("contact_name")
+  email                 String?
+  address               String?
+  vatNumber             String?   @map("vat_number")
+  defaultPaymentTerms   Int       @default(14) @map("default_payment_terms") // days
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoices  Invoice[]
+
+  @@map("clients")
+}
+
+model Item {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  name        String
+  description String?
+  unitPrice   Float     @map("unit_price")
+  unitLabel   String    @default("hour") @map("unit_label") // hour, piece, project, etc
+  taxRate     Float     @default(0) @map("tax_rate") // 0, 9, 21, etc
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceLines    InvoiceLine[]
+
+  @@map("items")
+}
+
+model Invoice {
+  id                  String        @id @default(cuid())
+  userId              String        @map("user_id")
+  clientId            String        @map("client_id")
+  invoiceNumber       String        @unique @map("invoice_number")
+  issueDate           DateTime      @map("issue_date")
+  dueDate             DateTime      @map("due_date")
+  currency            String        @default("EUR")
+  status              InvoiceStatus @default(DRAFT)
+  subtotal            Float         @default(0)
+  taxTotal            Float         @default(0) @map("tax_total")
+  total               Float         @default(0)
+  notes               String?
+  paymentInstructions String?       @map("payment_instructions")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  paidAt              DateTime?     @map("paid_at")
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  client      Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoiceLines InvoiceLine[]
+
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id          String    @id @default(cuid())
+  invoiceId  String    @map("invoice_id")
+  itemId     String?   @map("item_id")
+  description String
+  quantity   Float     @default(1)
+  unitPrice  Float     @map("unit_price")
+  taxRate    Float     @default(0) @map("tax_rate")
+  lineTotal  Float     @map("line_total")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  item    Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+
+  @@map("invoice_lines")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
